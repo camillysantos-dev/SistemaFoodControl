@@ -1,0 +1,8 @@
+import {useState} from "react"; import {PageHeader,Card,Button,money} from "../components/UI";
+const products=[["Pão de Queijo",3.5],["Coxinha",4],["Suco Natural",6],["Chocolate",3],["Refrigerante Lata",5]];
+export default function Venda(){const [cart,setCart]=useState([products[0],products[2]]); const total=cart.reduce((a,x)=>a+x[1],0);
+return <><PageHeader title="Venda" subtitle="Selecione o aluno, adicione os produtos e finalize a venda."/>
+<div className="two-col"><Card><h2>Selecionar Aluno</h2><input placeholder="Digite o nome, RA ou turma..."/><div className="student-mini"><div className="avatar big">A</div><div><b>Ana Beatriz Souza</b><small>RA: 2025103487 | 2º Ano B</small><em>Crédito disponível: R$ 15,00</em></div></div>
+<h2>Adicionar Produto</h2><input placeholder="Pesquisar produto..."/><table><tbody>{products.map((p,i)=><tr key={i}><td>{p[0]}</td><td>{money(p[1])}</td><td><button className="icon-btn" onClick={()=>setCart([...cart,p])}>+</button></td></tr>)}</tbody></table></Card>
+<Card><div className="row-between"><h2>Itens da Venda</h2><button className="link" onClick={()=>setCart([])}>Limpar</button></div><table><thead><tr><th>Produto</th><th>Qtd.</th><th>Valor</th><th></th></tr></thead><tbody>{cart.map((p,i)=><tr key={i}><td>{p[0]}</td><td>1</td><td>{money(p[1])}</td><td><button className="trash" onClick={()=>setCart(cart.filter((_,j)=>j!==i))}>×</button></td></tr>)}</tbody></table>
+<div className="checkout"><div className="row-between"><b>Total da Venda</b><strong>{money(total)}</strong></div><select><option>Saldo do Aluno (Crédito)</option><option>PIX</option><option>Dinheiro</option><option>Cartão de Débito</option></select><Button>Finalizar Venda</Button></div></Card></div></> }
