@@ -192,7 +192,7 @@ export default function Layout() {
               <div className="admin-menu">
                 <button
                   type="button"
-                  onClick={abrirCadastroUsuario}
+                  onClick={() => navigate("/cadastro-usuario")}
                 >
                   <UserPlus size={17} />
                   Criar usuário
