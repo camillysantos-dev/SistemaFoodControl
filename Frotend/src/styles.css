@@ -206,6 +206,7 @@ body {
 
 .admin-wrapper {
   position: relative;
+  margin-left: auto;
 }
 
 .admin {

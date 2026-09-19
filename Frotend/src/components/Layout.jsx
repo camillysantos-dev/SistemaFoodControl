@@ -7,7 +7,7 @@ import {
 
 import {
   ShoppingCart,
-  Package,
+  Package,  
   Boxes,
   Users,
   BarChart3,
@@ -158,11 +158,11 @@ export default function Layout() {
 
       <main className="main">
         <header className="topbar">
-          <div className="global-search">
+          {/* <div className="global-search">
             <Search size={17} />
 
             <input placeholder="Pesquisar produtos, clientes, vendas..." />
-          </div>
+          </div> */}
 
           <div className="admin-wrapper">
             <button

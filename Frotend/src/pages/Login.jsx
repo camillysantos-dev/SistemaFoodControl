@@ -1,105 +1,105 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+  import { useState } from "react";
+  import { useNavigate } from "react-router-dom";
 
 
-import {
-  UserRound,
-  LockKeyhole,
-  Eye,
-  EyeOff,
-  Box,
-  ShoppingCart,
-  BarChart3,
-  ArrowRight,
-} from "lucide-react";
+  import {
+    UserRound,
+    LockKeyhole,
+    Eye,
+    EyeOff,
+    Box,
+    ShoppingCart,
+    BarChart3,
+    ArrowRight,
+  } from "lucide-react";
 
-export default function Login() {
-  const [usuario, setUsuario] = useState("");
-  const [senha, setSenha] = useState("");
-  const [mostrarSenha, setMostrarSenha] = useState(false);
-  const [erro, setErro] = useState("");
+  export default function Login() {
+    const [usuario, setUsuario] = useState("");
+    const [senha, setSenha] = useState("");
+    const [mostrarSenha, setMostrarSenha] = useState(false);
+    const [erro, setErro] = useState("");
 
-  const navigate = useNavigate();
+    const navigate = useNavigate();
 
-  function entrar(event) {
-    event.preventDefault();
+    function entrar(event) {
+      event.preventDefault();
 
-    const usuarioDigitado = usuario.trim().toLowerCase();
+      const usuarioDigitado = usuario.trim().toLowerCase();
 
-    const usuariosCadastrados =
-      JSON.parse(localStorage.getItem("usuariosFoodControl")) || [];
+      const usuariosCadastrados =
+        JSON.parse(localStorage.getItem("usuariosFoodControl")) || [];
 
-    const usuarioEncontrado = usuariosCadastrados.find(
-      (item) =>
-        (item.usuario === usuarioDigitado || item.email === usuarioDigitado) &&
-        item.senha === senha
-    );
+      const usuarioEncontrado = usuariosCadastrados.find(
+        (item) =>
+          (item.usuario === usuarioDigitado || item.email === usuarioDigitado) &&
+          item.senha === senha
+      );
 
-    if (
-      (usuarioDigitado === "admin" && senha === "1234") ||
-      usuarioEncontrado
-    ) {
-      setErro("");
-      navigate("/venda");
-    } else {
-      setErro("Usuário ou senha incorretos.");
+      if (
+        (usuarioDigitado === "admin" && senha === "1234") ||
+        usuarioEncontrado
+      ) {
+        setErro("");
+        navigate("/venda");
+      } else {
+        setErro("Usuário ou senha incorretos.");
+      }
     }
+    //testeteste
+
+    return (
+      <main className="login-page">
+
+        <form onSubmit={entrar}>
+          <div className="form-group">
+            <label htmlFor="usuario">Usuário</label>
+
+            <div className="input-container">
+              <UserRound size={24} />
+
+              <input
+                id="usuario"
+                type="text"
+                value={usuario}
+                onChange={(event) => setUsuario(event.target.value)}
+                placeholder="Digite seu usuário"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="senha">Senha</label>
+
+            <div className="input-container">
+              <LockKeyhole size={24} />
+
+              <input
+                id="senha"
+                type={mostrarSenha ? "text" : "password"}
+                value={senha}
+                onChange={(event) => setSenha(event.target.value)}
+                placeholder="Digite sua senha"
+                required
+              />
+
+              <button
+                className="show-password"
+                type="button"
+                onClick={() => setMostrarSenha(!mostrarSenha)}
+              >
+                {mostrarSenha ? <EyeOff size={24} /> : <Eye size={24} />}
+              </button>
+            </div>
+          </div>
+
+          {erro && <p className="login-error">{erro}</p>}
+
+          <button className="login-button" type="submit">
+            Entrar
+            <ArrowRight size={25} />
+          </button>
+        </form>
+      </main>
+    );
   }
-  //testeteste
-
-  return (
-    <main className="login-page">
-
-      <form onSubmit={entrar}>
-        <div className="form-group">
-          <label htmlFor="usuario">Usuário</label>
-
-          <div className="input-container">
-            <UserRound size={24} />
-
-            <input
-              id="usuario"
-              type="text"
-              value={usuario}
-              onChange={(event) => setUsuario(event.target.value)}
-              placeholder="Digite seu usuário"
-              required
-            />
-          </div>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="senha">Senha</label>
-
-          <div className="input-container">
-            <LockKeyhole size={24} />
-
-            <input
-              id="senha"
-              type={mostrarSenha ? "text" : "password"}
-              value={senha}
-              onChange={(event) => setSenha(event.target.value)}
-              placeholder="Digite sua senha"
-              required
-            />
-
-            <button
-              className="show-password"
-              type="button"
-              onClick={() => setMostrarSenha(!mostrarSenha)}
-            >
-              {mostrarSenha ? <EyeOff size={24} /> : <Eye size={24} />}
-            </button>
-          </div>
-        </div>
-
-        {erro && <p className="login-error">{erro}</p>}
-
-        <button className="login-button" type="submit">
-          Entrar
-          <ArrowRight size={25} />
-        </button>
-      </form>
-    </main>
-  );
-}
