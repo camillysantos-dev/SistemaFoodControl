@@ -120,112 +120,112 @@ class ClienteInfrastructure {
 }
 module.exports = ClienteInfrastructure;
 
-async function testar() {
+// async function testar() {
 
-    const infrastructure = new ClienteInfrastructure();
+//     const infrastructure = new ClienteInfrastructure();
 
-    try {
+//     try {
 
-        // 1. CADASTRAR
-        console.log("\n--- CADASTRAR CLIENTE ---");
+//         // 1. CADASTRAR
+//         console.log("\n--- CADASTRAR CLIENTE ---");
 
-        const cliente = new Cliente(
-            null,
-            "Camilly Teste",
-            "Aluno",
-            "11999999999",
-            "Teste do Infrastructure",
-            true,
-            null
-        );
+//         const cliente = new Cliente(
+//             null,
+//             "Camilly Teste",
+//             "Aluno",
+//             "11999999999",
+//             "Teste do Infrastructure",
+//             true,
+//             null
+//         );
 
-        const id = await infrastructure.cadastrarCliente(cliente);
+//         const id = await infrastructure.cadastrarCliente(cliente);
 
-        console.log("Cliente cadastrado!");
-        console.log("ID:", id);
-
-
-        // 2. BUSCAR PELO ID
-        console.log("\n--- BUSCAR POR ID ---");
-
-        const clienteEncontrado =
-            await infrastructure.buscarClientePorId(id);
-
-        console.log(clienteEncontrado);
+//         console.log("Cliente cadastrado!");
+//         console.log("ID:", id);
 
 
-        // 3. BUSCAR PELO TIPO
-        console.log("\n--- BUSCAR POR TIPO ---");
+//         // 2. BUSCAR PELO ID
+//         console.log("\n--- BUSCAR POR ID ---");
 
-        const alunos =
-            await infrastructure.buscarClientePorTipo("Aluno");
+//         const clienteEncontrado =
+//             await infrastructure.buscarClientePorId(id);
 
-        console.log(alunos);
-
-
-        // 4. LISTAR
-        console.log("\n--- LISTAR CLIENTES ---");
-
-        const clientes =
-            await infrastructure.listarClientes();
-
-        console.log(clientes);
+//         console.log(clienteEncontrado);
 
 
-        // 5. ATUALIZAR
-        console.log("\n--- ATUALIZAR CLIENTE ---");
+//         // 3. BUSCAR PELO TIPO
+//         console.log("\n--- BUSCAR POR TIPO ---");
 
-        clienteEncontrado.nome = "Camilly Atualizada";
-        clienteEncontrado.telefone = "11888888888";
+//         const alunos =
+//             await infrastructure.buscarClientePorTipo("Aluno");
 
-        const atualizado =
-            await infrastructure.atualizarCliente(clienteEncontrado);
-
-        console.log("Atualizado:", atualizado);
+//         console.log(alunos);
 
 
-        // 6. VERIFICAR ATUALIZAÇÃO
-        console.log("\n--- CLIENTE ATUALIZADO ---");
+//         // 4. LISTAR
+//         console.log("\n--- LISTAR CLIENTES ---");
 
-        const atualizadoBanco =
-            await infrastructure.buscarClientePorId(id);
+//         const clientes =
+//             await infrastructure.listarClientes();
 
-        console.log(atualizadoBanco);
-
-
-        // 7. EXCLUIR
-        console.log("\n--- EXCLUIR CLIENTE ---");
-
-        const excluido =
-            await infrastructure.excluirCliente(id);
-
-        console.log("Excluído/desativado:", excluido);
+//         console.log(clientes);
 
 
-        // 8. VERIFICAR SE FOI DESATIVADO
-        console.log("\n--- VERIFICAR EXCLUSÃO ---");
+//         // 5. ATUALIZAR
+//         console.log("\n--- ATUALIZAR CLIENTE ---");
 
-        const clienteDesativado =
-            await infrastructure.buscarClientePorId(id);
+//         clienteEncontrado.nome = "Camilly Atualizada";
+//         clienteEncontrado.telefone = "11888888888";
 
-        console.log(clienteDesativado);
+//         const atualizado =
+//             await infrastructure.atualizarCliente(clienteEncontrado);
 
-    } catch (erro) {
-
-        console.error("Erro no teste:");
-        console.error(erro);
-
-    } finally {
-
-        await pool.end();
-
-    }
-}
+//         console.log("Atualizado:", atualizado);
 
 
-// Executa os testes somente quando rodar este arquivo diretamente
-if (require.main === module) {
-    testar();
-}
+//         // 6. VERIFICAR ATUALIZAÇÃO
+//         console.log("\n--- CLIENTE ATUALIZADO ---");
+
+//         const atualizadoBanco =
+//             await infrastructure.buscarClientePorId(id);
+
+//         console.log(atualizadoBanco);
+
+
+//         // 7. EXCLUIR
+//         console.log("\n--- EXCLUIR CLIENTE ---");
+
+//         const excluido =
+//             await infrastructure.excluirCliente(id);
+
+//         console.log("Excluído/desativado:", excluido);
+
+
+//         // 8. VERIFICAR SE FOI DESATIVADO
+//         console.log("\n--- VERIFICAR EXCLUSÃO ---");
+
+//         const clienteDesativado =
+//             await infrastructure.buscarClientePorId(id);
+
+//         console.log(clienteDesativado);
+
+//     } catch (erro) {
+
+//         console.error("Erro no teste:");
+//         console.error(erro);
+
+//     } finally {
+
+//         await pool.end();
+
+//     }
+// }
+
+
+// // Executa os testes somente quando rodar este arquivo diretamente
+// if (require.main === module) {
+//     testar();
+// }
 
 

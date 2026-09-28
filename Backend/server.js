@@ -10,6 +10,8 @@ require('./config/db');
 const produtoRoutes = require('./routes/produtoRoutes');
 const categoriaRoutes = require('./routes/categoriaRoutes');
 const estoqueRoutes = require('./routes/estoqueRoutes');
+const clientesRoutes = require('./routes/clientesRoutes');
+const creditoRoutes = require('./routes/creditoRoutes');
 
 // CRIANDO A APLICAÇÃO EXPRESS
 const app = express();
@@ -23,6 +25,8 @@ app.use(express.json());
 app.use('/produtos', produtoRoutes);
 app.use('/categorias', categoriaRoutes);
 app.use('/estoque', estoqueRoutes);
+app.use('/clientes', clientesRoutes);
+app.use('/creditos', creditoRoutes);
 
 // DEFININDO A PORTA DO SERVIDOR
 const PORT = process.env.PORT || 3000;
