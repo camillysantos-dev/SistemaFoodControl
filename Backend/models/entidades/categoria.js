@@ -6,7 +6,7 @@ class Categoria {
             this.nome_categoria = nome;
             this.descricao = descricao;
             this.ativo = ativo;
-        }
+    }
 
 
 }
