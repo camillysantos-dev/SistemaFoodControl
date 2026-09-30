@@ -6,22 +6,6 @@ const ClienteService = require('../services/clientesService');
 const clienteService = new ClienteService();
 
 
-router.post("/", async (req, res) => {
-  try {
-    const cliente = await clienteService.cadastrarCliente(req.body);
-
-    res.status(201).json({
-      mensagem: "Cliente cadastrado com sucesso",
-      cliente,
-    });
-  } catch (erro) {
-    res.status(400).json({
-      mensagem: "Erro ao cadastrar cliente",
-      erro: erro.message,
-    });
-  }
-});
-
 // LISTAR TODOS OS CLIENTES
 router.get('/', async (req, res) => {
     try {
