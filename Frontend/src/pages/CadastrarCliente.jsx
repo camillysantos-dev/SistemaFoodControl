@@ -1,11 +1,15 @@
 import { useState } from "react";
+import { requisicao } from "../api/clientes";
 import { PageHeader, Card, Field, Button } from "../components/UI";
 
 const formularioInicial = {
     nome: "",
     tipoCliente: "",
     ra: "",
+    turma: "",
+    telefoneResponsavel: "",
     responsavel: "",
+    parentesco: "",
     telefone: "",
     observacoes: "",
 };
@@ -13,6 +17,7 @@ const formularioInicial = {
 export default function CadastrarCliente() {
     const [formulario, setFormulario] = useState(formularioInicial);
     const [mensagem, setMensagem] = useState("");
+    const [salvando, setSalvando] = useState(false);
 
     function atualizarCampo(event) {
         const { name, value } = event.target;
@@ -30,8 +35,11 @@ export default function CadastrarCliente() {
             ...dadosAnteriores,
             tipoCliente: novoTipo,
             ra: novoTipo === "aluno" ? dadosAnteriores.ra : "",
+            turma: novoTipo === "aluno" ? dadosAnteriores.turma : "",
+            telefoneResponsavel: novoTipo === "aluno" ? dadosAnteriores.telefoneResponsavel : "",
             responsavel:
                 novoTipo === "aluno" ? dadosAnteriores.responsavel : "",
+            parentesco: novoTipo === "aluno" ? dadosAnteriores.parentesco : "",
         }));
     }
 
@@ -40,39 +48,37 @@ export default function CadastrarCliente() {
         setMensagem("");
     }
 
-    function salvarCliente(event) {
+    async function salvarCliente(event) {
         event.preventDefault();
-
-        if (
-            formulario.tipoCliente === "aluno" &&
-            (!formulario.ra.trim() || !formulario.responsavel.trim())
-        ) {
-            setMensagem("Preencha o RA e o responsável do aluno.");
+        if (formulario.tipoCliente === "aluno" &&
+            (!formulario.ra.trim() || !formulario.responsavel.trim() || !formulario.telefoneResponsavel.trim())) {
+            setMensagem("Preencha RA, responsável e telefone do responsável.");
             return;
         }
-
-        const clientesSalvos =
-            JSON.parse(localStorage.getItem("clientes")) || [];
-
-        const novoCliente = {
-            id: Date.now(),
-            ...formulario,
-            dataCadastro: new Date().toISOString(),
-        };
-
-        localStorage.setItem(
-            "clientes",
-            JSON.stringify([...clientesSalvos, novoCliente])
-        );
-
-        setFormulario(formularioInicial);
-        setMensagem("Cliente cadastrado com sucesso!");
-
-        setMensagem("Cliente cadastrado com sucesso!");
-
-        setTimeout(() => {
-            setMensagem("");
-        }, 2000);
+        setSalvando(true);
+        setMensagem("");
+        try {
+            await requisicao("/clientes", {
+                method: "POST",
+                body: JSON.stringify({
+                    nome: formulario.nome.trim(),
+                    tipo_cliente: ({ aluno: "Aluno", professor: "Professor", funcionario: "Funcionário", visitante: "Visitante" })[formulario.tipoCliente],
+                    telefone: formulario.telefone.trim(),
+                    observacoes: formulario.observacoes.trim(),
+                    ra: formulario.ra.trim(),
+                    turma: formulario.turma.trim(),
+                    responsavel: formulario.responsavel.trim(),
+                    telefone_responsavel: formulario.telefoneResponsavel.trim(),
+                    parentesco: formulario.parentesco,
+                }),
+            });
+            setFormulario(formularioInicial);
+            setMensagem("Cliente cadastrado com sucesso!");
+        } catch (erro) {
+            setMensagem(`Não foi possível cadastrar: ${erro.message}`);
+        } finally {
+            setSalvando(false);
+        }
     }
 
     return (
@@ -124,6 +130,9 @@ export default function CadastrarCliente() {
                                     />
                                 </Field>
 
+                                <Field label="Turma">
+                                    <input name="turma" value={formulario.turma} onChange={atualizarCampo} placeholder="Turma do aluno" />
+                                </Field>
                                 <Field label="Responsável" required>
                                     <input
                                         type="text"
@@ -133,6 +142,28 @@ export default function CadastrarCliente() {
                                         placeholder="Nome do responsável"
                                         required
                                     />
+                                </Field>
+
+                                <Field label="Parentesco">
+                                    <select
+                                        name="parentesco"
+                                        value={formulario.parentesco}
+                                        onChange={atualizarCampo}
+                                    >
+                                        <option value="">Selecione o parentesco</option>
+                                        <option value="Mãe">Mãe</option>
+                                        <option value="Pai">Pai</option>
+                                        <option value="Avó">Avó</option>
+                                        <option value="Avô">Avô</option>
+                                        <option value="Tia">Tia</option>
+                                        <option value="Tio">Tio</option>
+                                        <option value="Responsável legal">Responsável legal</option>
+                                        <option value="Outro">Outro</option>
+                                    </select>
+                                </Field>
+
+                                <Field label="Telefone do responsável" required>
+                                    <input type="tel" name="telefoneResponsavel" value={formulario.telefoneResponsavel} onChange={atualizarCampo} required />
                                 </Field>
                             </>
                         )}
@@ -179,8 +210,8 @@ export default function CadastrarCliente() {
                             Limpar
                         </Button>
 
-                        <Button type="submit">
-                            Salvar
+                        <Button type="submit" disabled={salvando}>
+                            {salvando ? "Salvando..." : "Salvar"}
                         </Button>
                     </div>
                 </form>

@@ -10,6 +10,8 @@ require('./config/db');
 const produtoRoutes = require('./routes/produtoRoutes');
 const categoriaRoutes = require('./routes/categoriaRoutes');
 const estoqueRoutes = require('./routes/estoqueRoutes');
+
+const clientesRoutes = require("./routes/clientesRoutes");
 // vitor
 const relatorioRoutes = require('./routes/relatorioRoutes');
 
@@ -25,6 +27,8 @@ app.use(express.json());
 app.use('/produtos', produtoRoutes);
 app.use('/categorias', categoriaRoutes);
 app.use('/estoque', estoqueRoutes);
+
+app.use("/clientes", clientesRoutes);
 
 //vitor
 app.use('/relatorios', relatorioRoutes);

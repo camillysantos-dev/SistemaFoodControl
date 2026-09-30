@@ -73,27 +73,41 @@ class CreditoInfrastructure {
         return resultado.insertId;
     }
 
-    async adicionarCredito(idAluno, valor) {
-        const [resultado] = await pool.query(
-            `UPDATE Conta_credito
-             SET saldo = saldo + ?
-             WHERE id_aluno = ?`,
-            [valor, idAluno]
-        );
-
-        return resultado.affectedRows > 0;
+    async movimentarCredito(idAluno, valor, operacao) {
+        const conexao = await pool.getConnection();
+        try {
+            await conexao.beginTransaction();
+            const [contas] = await conexao.query(
+                `SELECT id_conta_credito, saldo FROM Conta_credito WHERE id_aluno = ? FOR UPDATE`, [idAluno]
+            );
+            if (!contas.length) { await conexao.rollback(); return false; }
+            const novoSaldo = Number(contas[0].saldo) + (operacao === 'adicionar' ? valor : -valor);
+            if (novoSaldo < 0) throw new Error('Saldo insuficiente');
+            await conexao.query(`UPDATE Conta_credito SET saldo = ? WHERE id_aluno = ?`, [novoSaldo, idAluno]);
+            await conexao.query(
+                `INSERT INTO Movimentacao_credito (id_conta_credito, tipo, valor, observacao) VALUES (?, ?, ?, ?)`,
+                [contas[0].id_conta_credito, operacao === 'adicionar' ? 'Depósito' : 'Ajuste', valor,
+                 operacao === 'adicionar' ? 'Recarga via Cantina' : 'Remoção de crédito']
+            );
+            await conexao.commit();
+            return true;
+        } catch (erro) {
+            await conexao.rollback();
+            throw erro;
+        } finally { conexao.release(); }
     }
 
-    async removerCredito(idAluno, valor) {
-        const [resultado] = await pool.query(
-            `UPDATE Conta_credito
-             SET saldo = saldo - ?
-             WHERE id_aluno = ?
-             AND saldo >= ?`,
-            [valor, idAluno, valor]
-        );
+    async adicionarCredito(idAluno, valor) { return this.movimentarCredito(idAluno, valor, 'adicionar'); }
+    async removerCredito(idAluno, valor) { return this.movimentarCredito(idAluno, valor, 'remover'); }
 
-        return resultado.affectedRows > 0;
+    async listarMovimentacoes(idAluno) {
+        const [linhas] = await pool.query(`
+            SELECT m.id_movimentacao AS id, m.data_movimentacao AS data,
+                   m.observacao AS descricao, m.tipo, m.valor
+            FROM Movimentacao_credito m
+            JOIN Conta_credito c ON c.id_conta_credito = m.id_conta_credito
+            WHERE c.id_aluno = ? ORDER BY m.data_movimentacao DESC, m.id_movimentacao DESC`, [idAluno]);
+        return linhas;
     }
 
     async atualizarSaldo(idAluno, saldo) {
@@ -120,209 +134,209 @@ class CreditoInfrastructure {
 
 module.exports = CreditoInfrastructure;
 
-async function testar() {
+// async function testar() {
 
-    const infrastructure = new CreditoInfrastructure();
+//     const infrastructure = new CreditoInfrastructure();
 
-    try {
+//     try {
 
-        // IMPORTANTE:
-        // Coloque aqui um id_aluno que exista
-        // na tabela Aluno do seu banco.
-        const idAlunoTeste = 1;
+//         // IMPORTANTE:
+//         // Coloque aqui um id_aluno que exista
+//         // na tabela Aluno do seu banco.
+//         const idAlunoTeste = 1;
 
 
-        // ==========================================
-        // 1 - CADASTRAR CONTA DE CRÉDITO
-        // ==========================================
+//         // ==========================================
+//         // 1 - CADASTRAR CONTA DE CRÉDITO
+//         // ==========================================
 
-        console.log("\n--- CADASTRAR CRÉDITO ---");
+//         console.log("\n--- CADASTRAR CRÉDITO ---");
 
-        const novoCredito = new CreditoAluno(
-            null,
-            idAlunoTeste,
-            100.00
-        );
+//         const novoCredito = new CreditoAluno(
+//             null,
+//             idAlunoTeste,
+//             100.00
+//         );
 
-        const idCredito =
-            await infrastructure.cadastrarCredito(novoCredito);
+//         const idCredito =
+//             await infrastructure.cadastrarCredito(novoCredito);
 
-        console.log("Conta de crédito cadastrada!");
-        console.log("ID da conta:", idCredito);
+//         console.log("Conta de crédito cadastrada!");
+//         console.log("ID da conta:", idCredito);
 
 
-        // ==========================================
-        // 2 - BUSCAR CRÉDITO PELO ID
-        // ==========================================
+//         // ==========================================
+//         // 2 - BUSCAR CRÉDITO PELO ID
+//         // ==========================================
 
-        console.log("\n--- BUSCAR CRÉDITO POR ID ---");
+//         console.log("\n--- BUSCAR CRÉDITO POR ID ---");
 
-        const credito =
-            await infrastructure.buscarCreditoPorId(idCredito);
+//         const credito =
+//             await infrastructure.buscarCreditoPorId(idCredito);
 
-        console.log(credito);
+//         console.log(credito);
 
 
-        // ==========================================
-        // 3 - BUSCAR CRÉDITO PELO ALUNO
-        // ==========================================
+//         // ==========================================
+//         // 3 - BUSCAR CRÉDITO PELO ALUNO
+//         // ==========================================
 
-        console.log("\n--- BUSCAR CRÉDITO POR ALUNO ---");
+//         console.log("\n--- BUSCAR CRÉDITO POR ALUNO ---");
 
-        const creditoAluno =
-            await infrastructure.buscarCreditoPorAluno(idAlunoTeste);
+//         const creditoAluno =
+//             await infrastructure.buscarCreditoPorAluno(idAlunoTeste);
 
-        console.log(creditoAluno);
+//         console.log(creditoAluno);
 
 
-        // ==========================================
-        // 4 - LISTAR CONTAS DE CRÉDITO
-        // ==========================================
+//         // ==========================================
+//         // 4 - LISTAR CONTAS DE CRÉDITO
+//         // ==========================================
 
-        console.log("\n--- LISTAR CRÉDITOS ---");
+//         console.log("\n--- LISTAR CRÉDITOS ---");
 
-        const creditos =
-            await infrastructure.listarCreditos();
+//         const creditos =
+//             await infrastructure.listarCreditos();
 
-        console.log(creditos);
+//         console.log(creditos);
 
 
-        // ==========================================
-        // 5 - ADICIONAR CRÉDITO
-        // ==========================================
+//         // ==========================================
+//         // 5 - ADICIONAR CRÉDITO
+//         // ==========================================
 
-        console.log("\n--- ADICIONAR CRÉDITO ---");
+//         console.log("\n--- ADICIONAR CRÉDITO ---");
 
-        const adicionado =
-            await infrastructure.adicionarCredito(
-                idAlunoTeste,
-                50.00
-            );
+//         const adicionado =
+//             await infrastructure.adicionarCredito(
+//                 idAlunoTeste,
+//                 50.00
+//             );
 
-        console.log("Crédito adicionado:", adicionado);
+//         console.log("Crédito adicionado:", adicionado);
 
 
-        // Verifica o novo saldo
-        const aposAdicionar =
-            await infrastructure.buscarCreditoPorAluno(idAlunoTeste);
+//         // Verifica o novo saldo
+//         const aposAdicionar =
+//             await infrastructure.buscarCreditoPorAluno(idAlunoTeste);
 
-        console.log("Saldo após adicionar:");
-        console.log(aposAdicionar);
+//         console.log("Saldo após adicionar:");
+//         console.log(aposAdicionar);
 
 
-        // ==========================================
-        // 6 - REMOVER CRÉDITO
-        // ==========================================
+//         // ==========================================
+//         // 6 - REMOVER CRÉDITO
+//         // ==========================================
 
-        console.log("\n--- REMOVER CRÉDITO ---");
+//         console.log("\n--- REMOVER CRÉDITO ---");
 
-        const removido =
-            await infrastructure.removerCredito(
-                idAlunoTeste,
-                30.00
-            );
+//         const removido =
+//             await infrastructure.removerCredito(
+//                 idAlunoTeste,
+//                 30.00
+//             );
 
-        console.log("Crédito removido:", removido);
+//         console.log("Crédito removido:", removido);
 
 
-        // Verifica o novo saldo
-        const aposRemover =
-            await infrastructure.buscarCreditoPorAluno(idAlunoTeste);
+//         // Verifica o novo saldo
+//         const aposRemover =
+//             await infrastructure.buscarCreditoPorAluno(idAlunoTeste);
 
-        console.log("Saldo após remover:");
-        console.log(aposRemover);
+//         console.log("Saldo após remover:");
+//         console.log(aposRemover);
 
 
-        // ==========================================
-        // 7 - TESTAR SALDO INSUFICIENTE
-        // ==========================================
+//         // ==========================================
+//         // 7 - TESTAR SALDO INSUFICIENTE
+//         // ==========================================
 
-        console.log("\n--- TESTAR SALDO INSUFICIENTE ---");
+//         console.log("\n--- TESTAR SALDO INSUFICIENTE ---");
 
-        const saldoInsuficiente =
-            await infrastructure.removerCredito(
-                idAlunoTeste,
-                10000.00
-            );
+//         const saldoInsuficiente =
+//             await infrastructure.removerCredito(
+//                 idAlunoTeste,
+//                 10000.00
+//             );
 
-        console.log(
-            "Conseguiu remover valor maior que o saldo:",
-            saldoInsuficiente
-        );
+//         console.log(
+//             "Conseguiu remover valor maior que o saldo:",
+//             saldoInsuficiente
+//         );
 
-        if (!saldoInsuficiente) {
-            console.log("Teste correto: saldo insuficiente.");
-        }
+//         if (!saldoInsuficiente) {
+//             console.log("Teste correto: saldo insuficiente.");
+//         }
 
 
-        // ==========================================
-        // 8 - ATUALIZAR SALDO
-        // ==========================================
+//         // ==========================================
+//         // 8 - ATUALIZAR SALDO
+//         // ==========================================
 
-        console.log("\n--- ATUALIZAR SALDO ---");
+//         console.log("\n--- ATUALIZAR SALDO ---");
 
-        const atualizado =
-            await infrastructure.atualizarSaldo(
-                idAlunoTeste,
-                200.00
-            );
+//         const atualizado =
+//             await infrastructure.atualizarSaldo(
+//                 idAlunoTeste,
+//                 200.00
+//             );
 
-        console.log("Saldo atualizado:", atualizado);
+//         console.log("Saldo atualizado:", atualizado);
 
 
-        const saldoAtualizado =
-            await infrastructure.buscarCreditoPorAluno(idAlunoTeste);
+//         const saldoAtualizado =
+//             await infrastructure.buscarCreditoPorAluno(idAlunoTeste);
 
-        console.log("Novo saldo:");
-        console.log(saldoAtualizado);
+//         console.log("Novo saldo:");
+//         console.log(saldoAtualizado);
 
 
-        // ==========================================
-        // 9 - EXCLUIR CONTA DE CRÉDITO
-        // ==========================================
+//         // ==========================================
+//         // 9 - EXCLUIR CONTA DE CRÉDITO
+//         // ==========================================
 
-        console.log("\n--- EXCLUIR CRÉDITO ---");
+//         console.log("\n--- EXCLUIR CRÉDITO ---");
 
-        const excluido =
-            await infrastructure.excluirCredito(idCredito);
+//         const excluido =
+//             await infrastructure.excluirCredito(idCredito);
 
-        console.log("Conta excluída:", excluido);
+//         console.log("Conta excluída:", excluido);
 
 
-        // ==========================================
-        // 10 - VERIFICAR EXCLUSÃO
-        // ==========================================
+//         // ==========================================
+//         // 10 - VERIFICAR EXCLUSÃO
+//         // ==========================================
 
-        console.log("\n--- VERIFICAR EXCLUSÃO ---");
+//         console.log("\n--- VERIFICAR EXCLUSÃO ---");
 
-        const verificarExclusao =
-            await infrastructure.buscarCreditoPorId(idCredito);
+//         const verificarExclusao =
+//             await infrastructure.buscarCreditoPorId(idCredito);
 
-        console.log(verificarExclusao);
+//         console.log(verificarExclusao);
 
-        if (verificarExclusao === null) {
-            console.log("Conta de crédito excluída corretamente.");
-        }
+//         if (verificarExclusao === null) {
+//             console.log("Conta de crédito excluída corretamente.");
+//         }
 
 
-        console.log("\n--- TESTES FINALIZADOS ---");
+//         console.log("\n--- TESTES FINALIZADOS ---");
 
 
-    } catch (erro) {
+//     } catch (erro) {
 
-        console.error("\nErro no teste:");
-        console.error(erro);
+//         console.error("\nErro no teste:");
+//         console.error(erro);
 
-    } finally {
+//     } finally {
 
-        await pool.end();
+//         await pool.end();
 
-    }
-}
+//     }
+// }
 
 
-// Executa os testes apenas quando este arquivo
-// for executado diretamente
-if (require.main === module) {
-    testar();
-}
+// // Executa os testes apenas quando este arquivo
+// // for executado diretamente
+// if (require.main === module) {
+//     testar();
+// }

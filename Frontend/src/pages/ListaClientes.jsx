@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
+import { listarClientes, requisicao } from "../api/clientes";
 import {
   PageHeader,
   Card,
@@ -15,11 +16,15 @@ export default function ListaClientes() {
     carregarClientes();
   }, []);
 
-  function carregarClientes() {
-    const clientesSalvos =
-      JSON.parse(localStorage.getItem("clientes")) || [];
+  const [erro, setErro] = useState("");
 
-    setClientes(clientesSalvos);
+  async function carregarClientes() {
+    try {
+      setClientes(await listarClientes());
+      setErro("");
+    } catch (falha) {
+      setErro(`Erro ao carregar clientes: ${falha.message}`);
+    }
   }
 
   const clientesFiltrados = clientes.filter((cliente) => {
@@ -29,72 +34,36 @@ export default function ListaClientes() {
       cliente.nome?.toLowerCase().includes(texto) ||
       cliente.ra?.toLowerCase().includes(texto) ||
       cliente.telefone?.toLowerCase().includes(texto) ||
-      cliente.tipoCliente?.toLowerCase().includes(texto)
+      cliente.tipo_cliente?.toLowerCase().includes(texto)
     );
   });
 
-  function excluirCliente(id) {
-    const desejaExcluir = window.confirm(
-      "Deseja realmente excluir este cliente?"
-    );
-
-    if (!desejaExcluir) {
-      return;
+  async function excluirCliente(id) {
+    if (!window.confirm("Deseja realmente excluir este cliente?")) return;
+    try {
+      await requisicao(`/clientes/${id}`, { method: "DELETE" });
+      await carregarClientes();
+    } catch (falha) {
+      setErro(`Erro ao excluir cliente: ${falha.message}`);
     }
-
-    const clientesAtualizados = clientes.filter(
-      (cliente) => cliente.id !== id
-    );
-
-    setClientes(clientesAtualizados);
-
-    localStorage.setItem(
-      "clientes",
-      JSON.stringify(clientesAtualizados)
-    );
   }
 
-  function editarCredito(cliente) {
-    if (cliente.tipoCliente !== "aluno") {
-      window.alert(
-        "O crédito está disponível somente para alunos."
-      );
-      return;
+  async function editarCredito(cliente) {
+    if (!cliente.id_aluno) return window.alert("O crédito está disponível somente para alunos.");
+    const entrada = window.prompt(`Informe o saldo de ${cliente.nome}:`, Number(cliente.credito).toFixed(2));
+    if (entrada === null) return;
+    const saldo = Number(entrada.replace(",", "."));
+    if (!Number.isFinite(saldo) || saldo < 0) return window.alert("Digite um valor válido.");
+    try {
+      const diferenca = Number((saldo - Number(cliente.credito)).toFixed(2));
+      if (diferenca === 0) return;
+      await requisicao(`/creditos/aluno/${cliente.id_aluno}/${diferenca > 0 ? "adicionar" : "remover"}`, {
+        method: "PATCH", body: JSON.stringify({ valor: Math.abs(diferenca) }),
+      });
+      await carregarClientes();
+    } catch (falha) {
+      setErro(`Erro ao atualizar crédito: ${falha.message}`);
     }
-
-    const novoCredito = window.prompt(
-      `Informe o crédito de ${cliente.nome}:`,
-      Number(cliente.credito || 0).toFixed(2)
-    );
-
-    if (novoCredito === null) {
-      return;
-    }
-
-    const creditoConvertido = Number(
-      novoCredito.replace(",", ".")
-    );
-
-    if (
-      Number.isNaN(creditoConvertido) ||
-      creditoConvertido < 0
-    ) {
-      window.alert("Digite um valor válido.");
-      return;
-    }
-
-    const clientesAtualizados = clientes.map((item) =>
-      item.id === cliente.id
-        ? { ...item, credito: creditoConvertido }
-        : item
-    );
-
-    setClientes(clientesAtualizados);
-
-    localStorage.setItem(
-      "clientes",
-      JSON.stringify(clientesAtualizados)
-    );
   }
 
   return (
@@ -105,6 +74,7 @@ export default function ListaClientes() {
       />
 
       <Card>
+        {erro && <p className="form-message error">{erro}</p>}
         <div className="toolbar">
           <input
             type="search"
@@ -132,12 +102,12 @@ export default function ListaClientes() {
 
             <tbody>
               {clientesFiltrados.map((cliente) => (
-                <tr key={cliente.id}>
+                <tr key={cliente.id_cliente}>
                   <td>{cliente.nome}</td>
 
                   <td>
                     <Status type="ok">
-                      {cliente.tipoCliente}
+                      {cliente.tipo_cliente}
                     </Status>
                   </td>
 
@@ -146,7 +116,7 @@ export default function ListaClientes() {
                   <td>{cliente.telefone || "—"}</td>
 
                   <td>
-                    {cliente.tipoCliente === "aluno"
+                    {cliente.tipo_cliente === "Aluno"
                       ? money(Number(cliente.credito || 0))
                       : "—"}
                   </td>
@@ -167,7 +137,7 @@ export default function ListaClientes() {
                         className="action-button delete"
                         title="Excluir cliente"
                         onClick={() =>
-                          excluirCliente(cliente.id)
+                          excluirCliente(cliente.id_cliente)
                         }
                       >
                         <Trash2 size={16} />

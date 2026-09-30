@@ -4,85 +4,75 @@ const Cliente = require('../models/entidades/cliente');
 class ClienteInfrastructure {
 
     async listarClientes() {
-        const [resultado] = await pool.query(
-            `SELECT *
-             FROM Cliente
-             WHERE ativo = TRUE
-             ORDER BY nome`
-        );
-
-        return resultado.map(cliente => new Cliente(
-            cliente.id_cliente,
-            cliente.nome,
-            cliente.tipo_cliente,
-            cliente.telefone,
-            cliente.observacoes,
-            cliente.ativo,
-            cliente.data_cadastro
-        ));
+        const [linhas] = await pool.query(`
+            SELECT c.*, a.id_aluno, a.matricula AS ra, a.turma,
+                   r.nome AS responsavel, COALESCE(cc.saldo, 0) AS credito
+            FROM Cliente c
+            LEFT JOIN Aluno a ON a.id_cliente = c.id_cliente
+            LEFT JOIN Conta_credito cc ON cc.id_aluno = a.id_aluno
+            LEFT JOIN Aluno_responsavel ar ON ar.id_aluno = a.id_aluno AND ar.responsavel_principal = TRUE AND ar.status = 'Ativo'
+            LEFT JOIN Responsavel r ON r.id_responsavel = ar.id_responsavel
+            WHERE c.ativo = TRUE ORDER BY c.nome
+        `);
+        return linhas;
     }
 
     async buscarClientePorId(id) {
-        const [resultado] = await pool.query(
-            `SELECT *
-             FROM Cliente
-             WHERE id_cliente = ?`,
-            [id]
-        );
-
-        if (resultado.length === 0) {
-            return null;
-        }
-
-        const cliente = resultado[0];
-
-        return new Cliente(
-            cliente.id_cliente,
-            cliente.nome,
-            cliente.tipo_cliente,
-            cliente.telefone,
-            cliente.observacoes,
-            cliente.ativo,
-            cliente.data_cadastro
-        );
+        const [linhas] = await pool.query(`
+            SELECT c.*, a.id_aluno, a.matricula AS ra, a.turma,
+                   r.nome AS responsavel, COALESCE(cc.saldo, 0) AS credito
+            FROM Cliente c
+            LEFT JOIN Aluno a ON a.id_cliente = c.id_cliente
+            LEFT JOIN Conta_credito cc ON cc.id_aluno = a.id_aluno
+            LEFT JOIN Aluno_responsavel ar ON ar.id_aluno = a.id_aluno AND ar.responsavel_principal = TRUE AND ar.status = 'Ativo'
+            LEFT JOIN Responsavel r ON r.id_responsavel = ar.id_responsavel
+            WHERE c.id_cliente = ?`, [id]);
+        return linhas[0] || null;
     }
 
     async buscarClientePorTipo(tipo) {
-        const [resultado] = await pool.query(
-            `SELECT *
-             FROM Cliente
-             WHERE tipo_cliente = ?
-             AND ativo = TRUE
-             ORDER BY nome`,
-            [tipo]
-        );
-
-        return resultado.map(cliente => new Cliente(
-            cliente.id_cliente,
-            cliente.nome,
-            cliente.tipo_cliente,
-            cliente.telefone,
-            cliente.observacoes,
-            cliente.ativo,
-            cliente.data_cadastro
-        ));
+        return (await this.listarClientes()).filter(cliente => cliente.tipo_cliente === tipo);
     }
 
-    async cadastrarCliente(cliente) {
-        const [resultado] = await pool.query(
-            `INSERT INTO Cliente
-                (nome, tipo_cliente, telefone, observacoes)
-             VALUES (?, ?, ?, ?)`,
-            [
-                cliente.nome,
-                cliente.tipo_cliente,
-                cliente.telefone,
-                cliente.observacoes
-            ]
-        );
-
-        return resultado.insertId;
+    async cadastrarCliente(cliente, dados = {}) {
+        const conexao = await pool.getConnection();
+        try {
+            await conexao.beginTransaction();
+            const [resultado] = await conexao.query(
+                `INSERT INTO Cliente (nome, tipo_cliente, telefone, observacoes) VALUES (?, ?, ?, ?)`,
+                [cliente.nome, cliente.tipo_cliente, cliente.telefone, cliente.observacoes]
+            );
+            if (cliente.tipo_cliente === 'Aluno') {
+                const [aluno] = await conexao.query(
+                    `INSERT INTO Aluno (id_cliente, matricula, turma) VALUES (?, ?, ?)`,
+                    [resultado.insertId, dados.ra, dados.turma || null]
+                );
+                const [responsavel] = await conexao.query(
+                    `INSERT INTO Responsavel (nome, telefone) VALUES (?, ?)`,
+                    [dados.responsavel, dados.telefone_responsavel]
+                );
+                await conexao.query(
+                    `INSERT INTO Aluno_responsavel
+                        (id_aluno, id_responsavel, parentesco, responsavel_principal)
+                    VALUES (?, ?, ?, TRUE)`,
+                    [
+                        aluno.insertId,
+                        responsavel.insertId,
+                        dados.parentesco || null,
+                    ]
+                );
+                await conexao.query(`INSERT INTO Conta_credito (id_aluno) VALUES (?)`, [aluno.insertId]);
+            }
+            await conexao.commit();
+            return resultado.insertId;
+        } catch (erro) {
+            await conexao.rollback();
+            throw erro;
+        } finally {
+            conexao.release();
+        }
     }
+
 
     async atualizarCliente(cliente) {
         const [resultado] = await pool.query(
@@ -120,112 +110,112 @@ class ClienteInfrastructure {
 }
 module.exports = ClienteInfrastructure;
 
-async function testar() {
+// async function testar() {
 
-    const infrastructure = new ClienteInfrastructure();
+//     const infrastructure = new ClienteInfrastructure();
 
-    try {
+//     try {
 
-        // 1. CADASTRAR
-        console.log("\n--- CADASTRAR CLIENTE ---");
+//         // 1. CADASTRAR
+//         console.log("\n--- CADASTRAR CLIENTE ---");
 
-        const cliente = new Cliente(
-            null,
-            "Camilly Teste",
-            "Aluno",
-            "11999999999",
-            "Teste do Infrastructure",
-            true,
-            null
-        );
+//         const cliente = new Cliente(
+//             null,
+//             "Camilly Teste",
+//             "Aluno",
+//             "11999999999",
+//             "Teste do Infrastructure",
+//             true,
+//             null
+//         );
 
-        const id = await infrastructure.cadastrarCliente(cliente);
+//         const id = await infrastructure.cadastrarCliente(cliente);
 
-        console.log("Cliente cadastrado!");
-        console.log("ID:", id);
-
-
-        // 2. BUSCAR PELO ID
-        console.log("\n--- BUSCAR POR ID ---");
-
-        const clienteEncontrado =
-            await infrastructure.buscarClientePorId(id);
-
-        console.log(clienteEncontrado);
+//         console.log("Cliente cadastrado!");
+//         console.log("ID:", id);
 
 
-        // 3. BUSCAR PELO TIPO
-        console.log("\n--- BUSCAR POR TIPO ---");
+//         // 2. BUSCAR PELO ID
+//         console.log("\n--- BUSCAR POR ID ---");
 
-        const alunos =
-            await infrastructure.buscarClientePorTipo("Aluno");
+//         const clienteEncontrado =
+//             await infrastructure.buscarClientePorId(id);
 
-        console.log(alunos);
-
-
-        // 4. LISTAR
-        console.log("\n--- LISTAR CLIENTES ---");
-
-        const clientes =
-            await infrastructure.listarClientes();
-
-        console.log(clientes);
+//         console.log(clienteEncontrado);
 
 
-        // 5. ATUALIZAR
-        console.log("\n--- ATUALIZAR CLIENTE ---");
+//         // 3. BUSCAR PELO TIPO
+//         console.log("\n--- BUSCAR POR TIPO ---");
 
-        clienteEncontrado.nome = "Camilly Atualizada";
-        clienteEncontrado.telefone = "11888888888";
+//         const alunos =
+//             await infrastructure.buscarClientePorTipo("Aluno");
 
-        const atualizado =
-            await infrastructure.atualizarCliente(clienteEncontrado);
-
-        console.log("Atualizado:", atualizado);
+//         console.log(alunos);
 
 
-        // 6. VERIFICAR ATUALIZAÇÃO
-        console.log("\n--- CLIENTE ATUALIZADO ---");
+//         // 4. LISTAR
+//         console.log("\n--- LISTAR CLIENTES ---");
 
-        const atualizadoBanco =
-            await infrastructure.buscarClientePorId(id);
+//         const clientes =
+//             await infrastructure.listarClientes();
 
-        console.log(atualizadoBanco);
-
-
-        // 7. EXCLUIR
-        console.log("\n--- EXCLUIR CLIENTE ---");
-
-        const excluido =
-            await infrastructure.excluirCliente(id);
-
-        console.log("Excluído/desativado:", excluido);
+//         console.log(clientes);
 
 
-        // 8. VERIFICAR SE FOI DESATIVADO
-        console.log("\n--- VERIFICAR EXCLUSÃO ---");
+//         // 5. ATUALIZAR
+//         console.log("\n--- ATUALIZAR CLIENTE ---");
 
-        const clienteDesativado =
-            await infrastructure.buscarClientePorId(id);
+//         clienteEncontrado.nome = "Camilly Atualizada";
+//         clienteEncontrado.telefone = "11888888888";
 
-        console.log(clienteDesativado);
+//         const atualizado =
+//             await infrastructure.atualizarCliente(clienteEncontrado);
 
-    } catch (erro) {
-
-        console.error("Erro no teste:");
-        console.error(erro);
-
-    } finally {
-
-        await pool.end();
-
-    }
-}
+//         console.log("Atualizado:", atualizado);
 
 
-// Executa os testes somente quando rodar este arquivo diretamente
-if (require.main === module) {
-    testar();
-}
+//         // 6. VERIFICAR ATUALIZAÇÃO
+//         console.log("\n--- CLIENTE ATUALIZADO ---");
+
+//         const atualizadoBanco =
+//             await infrastructure.buscarClientePorId(id);
+
+//         console.log(atualizadoBanco);
+
+
+//         // 7. EXCLUIR
+//         console.log("\n--- EXCLUIR CLIENTE ---");
+
+//         const excluido =
+//             await infrastructure.excluirCliente(id);
+
+//         console.log("Excluído/desativado:", excluido);
+
+
+//         // 8. VERIFICAR SE FOI DESATIVADO
+//         console.log("\n--- VERIFICAR EXCLUSÃO ---");
+
+//         const clienteDesativado =
+//             await infrastructure.buscarClientePorId(id);
+
+//         console.log(clienteDesativado);
+
+//     } catch (erro) {
+
+//         console.error("Erro no teste:");
+//         console.error(erro);
+
+//     } finally {
+
+//         await pool.end();
+
+//     }
+// }
+
+
+// // Executa os testes somente quando rodar este arquivo diretamente
+// if (require.main === module) {
+//     testar();
+// }
 
 
